@@ -13,9 +13,10 @@ BBIN=build/bin
 
 build-partial: partial-clean build
 build-all: clean build
-build: $(BIN)/disk.img $(BIN)/bootsector.bin
-	dd if=bin/bootsector.bin of=bin/disk.img bs=440 count=1 conv=notrunc > /dev/null
-	
+build: $(BIN)/disk.img $(BIN)/bootsector.bin $(BIN)/bootloader.bin
+	dd if=$(BIN)/bootsector.bin of=$(BIN)/disk.img bs=440 count=1 conv=notrunc > /dev/null
+	dd if=$(BIN)/bootloader.bin of=$(BIN)/disk.img seek=2048 bs=512 count=1 conv=notrunc > /dev/null
+
 $(BIN)/disk.img:
 	dd if=/dev/zero of=$(BIN)/disk.img bs=512 count=131072
 	echo "n\np\n1\n2048\n131071\na\nw" | fdisk $(BIN)/disk.img
@@ -28,11 +29,21 @@ $(BIN)/disk.img:
 $(BUILD)/bootsector.o: $(SRC)/bootsector/bootsector.s
 	nasm -f elf32 -g3 -F dwarf $< -o $@
 
+$(BUILD)/bootloader.o: $(SRC)/bootloader/bootloader.s
+	nasm -f elf32 -g3 -F dwarf $< -o $@
+
 $(BUILD)/debug/bootsector.elf: $(BUILD)/bootsector.o
 	ld -T$(BUILD)/linkers/bootsector.ld -melf_i386 $< -o $@
 
+$(BUILD)/debug/bootloader.elf: $(BUILD)/bootloader.o
+	ld -T$(BUILD)/linkers/bootloader.ld -melf_i386 $< -o $@
+
 $(BIN)/bootsector.bin: $(BUILD)/bootsector.o
-	ld -M -T$(BUILD)/linkers/bootsector.ld -melf_i386 --oformat=binary $< -o $@
+	ld -T$(BUILD)/linkers/bootsector.ld -melf_i386 --oformat=binary $< -o $@
+
+$(BIN)/bootloader.bin: $(BUILD)/bootloader.o
+	ld -T$(BUILD)/linkers/bootloader.ld -melf_i386 --oformat=binary $< -o $@
+	dd if=$(BIN)/disk.img of=$@ skip=1048579 seek=3 bs=1 count=59 conv=notrunc > /dev/null
 
 run: $(BIN)/disk.img
 	-export DISPLAY=:0;\
