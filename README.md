@@ -3,9 +3,9 @@
 ## Pathway
 
 - [ ] Basic
-  - [ ] Bootsector
-    - [ ] Relocate self to 0x0060:0
-    - [ ] Load first bootable partition to 0x7c00 and run it
+  - [x] Bootsector
+    - [x] Relocate self to 0x0060:0
+    - [x] Load first bootable partition to 0x7c00 and run it
   - [ ] Bootloader
     - [ ] Enter 32 bit protected mode
     - [ ] Load first bootable partition at 1Mb and jump to it
