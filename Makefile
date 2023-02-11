@@ -39,9 +39,8 @@ run: $(BIN)/disk.img
 	qemu-system-i386 \
 	-display gtk \
 	-name "Operating System" \
-	-machine pc \
 	-m 1G \
-	-drive file=$(BIN)/disk.img,media=disk,index=0,format=raw \
+	-drive format=raw,file=$(BIN)/disk.img,index=0,media=disk \
 	-rtc base=localtime,clock=host,driftfix=slew
 
 debug: $(BIN)/disk.img $(BUILD)/debug/bootsector.elf
@@ -50,9 +49,8 @@ debug: $(BIN)/disk.img $(BUILD)/debug/bootsector.elf
 	-s -S \
 	-display gtk \
 	-name "Operating System" \
-	-machine pc \
 	-m 1G \
-	-drive file=$(BIN)/disk.img,media=disk,index=0,format=raw \
+	-drive format=raw,file=$(BIN)/disk.img,index=0,media=disk \
 	-rtc base=localtime,clock=host,driftfix=slew & \
 	gdb -ix gdbinit_real_mode.txt $(BUILD)/debug/bootsector.elf \
         -ex 'target remote localhost:1234' \
