@@ -8,15 +8,14 @@ SECTION .text
   load_loop:
     movsd
     loop load_loop
-  jmp word [jmp_to]
-jmp_to: dw _start
+  jmp word [_start_loc]
 _start:
   ; Find bootable partition
   mov si, partition_table_start
   find_boot_partition:
     cmp byte [si], 0x80
     je found_boot_partition
-    add si, (partition_table_start-partition.end)
+    add si, (partition.end - partition)
     cmp si, partition_table_end
     jne find_boot_partition 
     mov si, no_bootable_medium
@@ -26,38 +25,28 @@ _start:
     mov ax, 0
     int 0x13
     mov bx, si
-    mov ah, 2
-    mov al, 1
-    mov ch, [bx+partition.chs_first.ch-partition]
-    mov cl, [bx+partition.chs_first.cl-partition]
-    mov dh, [bx+partition.chs_first.dh-partition]
-    mov bx, 0
-    mov es, bx
-    mov bx, 0x7c00
+    mov eax, dword [bx+partition.lba_first - partition]
+    mov dword [drive_parameters.lba], eax
+    mov ax, 0x4200
+    mov si, drive_parameters
     int 0x13
     jnc loaded_partition
-    call print_al
-    mov al, ah
-    call print_al
     mov si, error_reading_partition
     mov cx, error_reading_partition.end-error_reading_partition
     jmp error
   loaded_partition:
-    mov al, ah
-    call print_al
-    mov al, [0x7c00]
-    call print_al
-    mov si, di
-    mov dl, [di]
+    movzx esi, bx
     mov eax, 0
     mov ebx, 0
     mov ecx, 0
     mov edx, 0
-    add di, partition.status-partition
-    mov di, 0
+    mov edi, 0
+    mov ds, ax
+    mov es, ax
+    mov fs, ax
+    mov gs, ax
+    mov dl, byte [si]
     jmp 0x7c00
-    found: db "Loaded partition"
-    found.end:
 error:
   mov ah, 0x0e
   .loop:
@@ -68,34 +57,15 @@ error:
   .loop2:
     hlt
     jmp .loop2
-print_al:
-    push ds
-    push bx
-    push ax
-    push ax
-    mov bx, 0
-    mov ds, bx
-    mov ah, 0x0e
-    mov bx, hex_to_ascii
-    and al, 0xF0
-    shr al, 4
-    xlatb
-    int 0x10
-    pop ax
-    mov ah, 0x0e
-    and al, 0xF
-    xlatb
-    int 0x10
-    pop ax
-    pop bx
-    pop ds
-    ret
-
-hex_to_ascii: db "0123456789ABCDEF"
+_start_loc: dw _start
+drive_parameters: db 0x10, 0, 1, 0, 0, 0x7c, 0, 0
+            .lba: db 0,0,0,0,0,0,0,0
 no_bootable_medium: db "No bootable medium"
 no_bootable_medium.end:
 error_reading_partition: db "Error while reading partition"
 error_reading_partition.end:
+found: db "Loaded partition"
+found.end:
 times 440-($-$$) db 0
 disk_sig:
   dd 0
