@@ -23,12 +23,41 @@ _start:
     mov cx, no_bootable_medium.end-no_bootable_medium
     jmp error
   found_boot_partition:
-    mov di, si
-    mov si, found_boot_partition_msg
-    mov cx, found_boot_partition_msg.end - found_boot_partition_msg
+    mov ax, 0
+    int 0x13
+    mov bx, si
+    mov ah, 2
+    mov al, 1
+    mov ch, [bx+partition.chs_first.ch-partition]
+    mov cl, [bx+partition.chs_first.cl-partition]
+    mov dh, [bx+partition.chs_first.dh-partition]
+    mov bx, 0
+    mov es, bx
+    mov bx, 0x7c00
+    int 0x13
+    jnc loaded_partition
+    call print_al
+    mov al, ah
+    call print_al
+    mov si, error_reading_partition
+    mov cx, error_reading_partition.end-error_reading_partition
     jmp error
-  found_boot_partition_msg: db "Found boot partition"
-  found_boot_partition_msg.end:
+  loaded_partition:
+    mov al, ah
+    call print_al
+    mov al, [0x7c00]
+    call print_al
+    mov si, di
+    mov dl, [di]
+    mov eax, 0
+    mov ebx, 0
+    mov ecx, 0
+    mov edx, 0
+    add di, partition.status-partition
+    mov di, 0
+    jmp 0x7c00
+    found: db "Loaded partition"
+    found.end:
 error:
   mov ah, 0x0e
   .loop:
