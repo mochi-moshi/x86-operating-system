@@ -1,0 +1,8 @@
+
+ata0-master: type=disk, path=bin/disk.img, mode=flat 
+boot: disk
+vgaromimage: file=/usr/local/share/bochs/VGABIOS-lgpl-latest
+vga: extension=vbe
+debug: action=ignore
+clock: sync=realtime, time0=local
+magic_break: enabled=1
