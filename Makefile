@@ -54,7 +54,8 @@ run: $(BIN)/disk.img
 	-drive format=raw,file=$(BIN)/disk.img,index=0,media=disk \
 	-rtc base=localtime,clock=host,driftfix=slew
 
-debug: $(BIN)/disk.img $(BUILD)/debug/bootsector.elf
+DBGFILE=bootsector.elf
+debug: $(BIN)/disk.img $(BUILD)/debug/$(DBGFILE)
 	-export DISPLAY=:0;\
 	qemu-system-i386 \
 	-s -S \
@@ -63,15 +64,15 @@ debug: $(BIN)/disk.img $(BUILD)/debug/bootsector.elf
 	-m 1G \
 	-drive format=raw,file=$(BIN)/disk.img,index=0,media=disk \
 	-rtc base=localtime,clock=host,driftfix=slew & \
-	gdb -ix gdbinit_real_mode.txt $(BUILD)/debug/bootsector.elf \
+	gdb -ix gdbinit_real_mode.txt $(BUILD)/debug/$(DBGFILE) \
         -ex 'target remote localhost:1234' \
         -ex 'set architecture i8086' \
-				-ex 'set tdesc filename target.xml' \
+	-ex 'set tdesc filename target.xml' \
         -ex 'layout src' \
         -ex 'layout regs' \
         -ex 'break _start' \
-				-ex 'break *0x7c00' \
-				-ex 'continue'
+	-ex 'break *0x7c00' \
+	-ex 'continue'
 partial-clean:
 	-rm -rf build/*.o bin/*.bin
 
