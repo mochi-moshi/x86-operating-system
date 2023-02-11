@@ -15,16 +15,17 @@ build-partial: partial-clean build
 build-all: clean build
 build: $(BIN)/disk.img $(BIN)/bootsector.bin $(BIN)/bootloader.bin
 	dd if=$(BIN)/bootsector.bin of=$(BIN)/disk.img bs=440 count=1 conv=notrunc > /dev/null
-	dd if=$(BIN)/bootloader.bin of=$(BIN)/disk.img seek=2048 bs=512 count=1 conv=notrunc > /dev/null
+	dd if=$(BIN)/bootloader.bin of=$(BIN)/disk.img seek=2048 bs=512 conv=notrunc > /dev/null
 
 $(BIN)/disk.img:
 	dd if=/dev/zero of=$(BIN)/disk.img bs=512 count=131072
 	echo "n\np\n1\n2048\n131071\na\nw" | fdisk $(BIN)/disk.img
 	sudo losetup /dev/loop0 $(BIN)/disk.img
 	sudo losetup /dev/loop1 $(BIN)/disk.img -o 1048576
-	sudo mkfs.fat -f 2 /dev/loop1
+	sudo mkfs.vfat -f 1 /dev/loop1
 	mkdir -p bin/fs
 	sudo mount /dev/loop1 bin/fs
+	sudo chmod u+w bin/fs
 
 $(BUILD)/bootsector.o: $(SRC)/bootsector/bootsector.s
 	nasm -f elf32 -g3 -F dwarf $< -o $@
