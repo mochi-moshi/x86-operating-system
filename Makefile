@@ -22,10 +22,9 @@ $(BIN)/disk.img:
 	echo "n\np\n1\n2048\n131071\na\nw" | fdisk $(BIN)/disk.img
 	sudo losetup /dev/loop0 $(BIN)/disk.img
 	sudo losetup /dev/loop1 $(BIN)/disk.img -o 1048576
-	sudo mkfs.vfat -f 1 /dev/loop1
+	sudo mkfs.ext2 -d $(SRC)/root /dev/loop1
 	mkdir -p bin/fs
 	sudo mount /dev/loop1 bin/fs
-	sudo chmod u+w bin/fs
 
 $(BUILD)/bootsector.o: $(SRC)/bootsector/bootsector.s
 	nasm -f elf32 -g3 -F dwarf $< -o $@
@@ -44,7 +43,6 @@ $(BIN)/bootsector.bin: $(BUILD)/bootsector.o
 
 $(BIN)/bootloader.bin: $(BUILD)/bootloader.o
 	ld -T$(BUILD)/linkers/bootloader.ld -melf_i386 --oformat=binary $< -o $@
-	dd if=$(BIN)/disk.img of=$@ skip=1048579 seek=3 bs=1 count=59 conv=notrunc > /dev/null
 
 run: $(BIN)/disk.img
 	-export DISPLAY=:0;\
