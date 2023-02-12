@@ -2,6 +2,15 @@ BITS 16
 
 SECTION .text
 _start:
+    mov byte [drive], dl
+    mov word [partition], si
+    mov bx, si
+    mov edx, [bx+8]
+    inc edx
+    mov bx, end_of_bootsector
+    mov cx, 3
+    call read_sectors
+    pop dx
     mov si, Hello_Message
     call print
     cli
@@ -35,7 +44,7 @@ read_sectors:
     mov dword [disk_parameters.lba+4], eax
     mov si, disk_parameters
     mov cx, 3
-    ;mov dl, byte [BPB.DRN]
+    mov dl, byte [drive]
 .retry:
     mov ah, 0x42
     int 0x13
@@ -56,7 +65,8 @@ disk_parameters: db 0x10, 0
     .offset:     dw 0
     .segment:    dw 0
     .lba:        dq 0
-
+drive: db 0
+partition: dw 0
 Hello_Message: db "Hello there!", 0xA, 0xD, 0
 times 510-($-$$) db 0
 dw 0xAA55
