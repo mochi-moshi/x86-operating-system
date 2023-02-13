@@ -13,11 +13,11 @@ BBIN=build/bin
 
 build-partial: partial-clean build
 build-all: clean build
-build: $(BIN)/disk.img $(BIN)/bootsector.bin $(BIN)/bootloader.bin
+build: $(BIN)/disk.img $(BIN)/bootsector.bin $(BIN)/bootloader.bin $(BIN)/entry.bin
 	mkdir -p $(BIN)/fs
 	mkdir -p $(BIN)/fs/boot
 	cp -R $(SRC)/root/* $(BIN)/fs
-	cp $(SRC)/root/test.txt $(BIN)/fs/boot/entry
+	cp $(BIN)/entry.bin $(BIN)/fs/boot/entry
 	sudo mkfs.ext2 -F -q -d bin/fs /dev/loop1 > /dev/null
 	dd if=$(BIN)/bootsector.bin of=$(BIN)/disk.img bs=440 count=1 conv=notrunc status=none
 	dd if=$(BIN)/bootloader.bin of=$(BIN)/disk.img seek=2048 bs=512 conv=notrunc status=none
@@ -34,17 +34,26 @@ $(BUILD)/bootsector.o: $(SRC)/bootsector/bootsector.s
 $(BUILD)/bootloader.o: $(SRC)/bootloader/bootloader.s
 	nasm -f elf32 -g3 -F dwarf $< -o $@
 
+$(BUILD)/entry.o: $(SRC)/bootloader/entry.s
+	nasm -f elf32 -g3 -F dwarf $< -o $@
+
 $(BUILD)/debug/bootsector.elf: $(BUILD)/bootsector.o
 	ld -T$(BUILD)/linkers/bootsector.ld -melf_i386 $< -o $@
 
 $(BUILD)/debug/bootloader.elf: $(BUILD)/bootloader.o
 	ld -T$(BUILD)/linkers/bootloader.ld -melf_i386 $< -o $@
 
+$(BUILD)/debug/entry.elf: $(BUILD)/entry.o
+	ld -T$(BUILD)/linkers/entry_db.ld -melf_i386 $< -o $@
+
 $(BIN)/bootsector.bin: $(BUILD)/bootsector.o
 	ld -T$(BUILD)/linkers/bootsector.ld -melf_i386 --oformat=binary $< -o $@
 
 $(BIN)/bootloader.bin: $(BUILD)/bootloader.o
 	ld -T$(BUILD)/linkers/bootloader.ld -melf_i386 --oformat=binary $< -o $@
+
+$(BIN)/entry.bin: $(BUILD)/entry.o
+	ld -T$(BUILD)/linkers/entry.ld -melf_i386 --oformat=binary $< -o $@
 
 run: $(BIN)/disk.img
 	-export DISPLAY=:0;\
@@ -72,7 +81,6 @@ debug: $(BIN)/disk.img $(BUILD)/debug/$(dbgfile).elf
         -ex 'layout src' \
         -ex 'layout regs' \
         -ex 'break _start' \
-	-ex 'break *0x7c00' \
 	-ex 'continue'
 partial-clean:
 	-rm -rf build/*.o bin/*.bin bin/fs/*

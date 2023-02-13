@@ -90,7 +90,33 @@ load_boot_file:
     mov eax, edx
     movsx ecx, word [superblock+88]
     mul ecx
-    jmp load_boot_file_cnt
+load_boot_file_cnt:
+    ; edx:eax - byte offset, ignore edx
+    ; Need to check if new block needs to be loaded
+    ; mov eax, dword [ebx+28]
+    movzx ecx, word [sectors_per_block]
+    shl ecx, 9 ; bytes per block
+    div ecx
+    push edx ; offset of inode into block
+    mov edx, eax ; block offset
+    add edx, dword [current_inode_table.block_num]
+    xor eax, eax
+    mov ebx, dword [inode_table_location]
+    call read_block
+    pop edx
+    add ebx, edx
+    mov edx, dword [ebx+40]
+    push ebx
+    movsx ebx, word [sectors_per_block] 
+    shl ebx, 9
+    add ebx, inode_loc
+    call read_block
+jmp_to_third_stage:
+    mov ax, bx
+    shr ax, 4
+    mov ds, ax
+    mov si, partition
+    jmp ebx
 halt:
     cli
 stall:
@@ -108,20 +134,6 @@ print:
     jnz .loop
     pop ax
     pop si
-    ret
-; ds:si - string to print
-; cx - length of string
-printc:
-    push si
-    push ax
-    mov ah, 0x0E
-.loop:
-    lodsb
-    int 0x10
-    loop .loop
-    pop ax
-    pop si
-    ret
     ret
 ; eax:edx - lba address to start read at (eax upper 4 bytes, edx lower 4 bytes)
 ; cx      - number of sectors to read
@@ -155,7 +167,6 @@ read_sectors:
 .good_read:
     pop si
     ret
-disk_read_err: db "Disk read err", 0
 disk_parameters: db 0x10, 0
     .sector_cnt: dw 0
     .offset:     dw 0
@@ -173,7 +184,9 @@ partition:
     .lba_first: dd 0
     .size: dd 0
     .end:
-tmp_pointer: dd 0
+inode_table_location: dd 0
+current_inode_table: dw 0
+         .block_num: dd 0
 sectors_per_block: dw 0
 block_to_sector: db 0
 drive: db 0
@@ -181,37 +194,25 @@ boot_folder_name: db "boot"
            .size: db 4
 boot_file_name:   db "entry"
          .size:   db 5
-boot_folder_not_found: db "boot folder not found",0
-boot_file_not_found: db "boot file not found",0
-invalid_directory_entry: db "invalid directory entry",0
-Hello_Message: db "Hello there!", 0xA, 0xD, 0
+tmp_pointer: dd 0
+disk_read_err: db "Disk read err", 0
 times 510-($-$$) db 0
 dw 0xAA55
 end_of_bootsector:
-load_boot_file_cnt:
-    ; edx:eax - byte offset, ignore edx
-    ; Need to check if new block needs to be loaded
-    ; mov eax, dword [ebx+28]
-    movzx ecx, word [sectors_per_block]
-    shl ecx, 9 ; bytes per block
-    div ecx
-    push edx ; offset of inode into block
-    mov edx, eax ; block offset
-    add edx, dword [current_inode_table.block_num]
-    xor eax, eax
-    mov ebx, dword [inode_table_location]
-    call read_block
-    pop edx
-    add ebx, edx
-    mov edx, dword [ebx+40]
-    push ebx
-    movsx ebx, word [sectors_per_block] 
-    shl ebx, 9
-    add ebx, inode_loc
-    call read_block
-    mov si, bx
-    call print
-    jmp halt
+; ds:si - string to print
+; cx - length of string
+printc:
+    push si
+    push ax
+    mov ah, 0x0E
+.loop:
+    lodsb
+    int 0x10
+    loop .loop
+    pop ax
+    pop si
+    ret
+    ret
 ; ds:si - name of entry to file
 ; cl - length of name
 ; returns eax = inode number, 0 if not found
@@ -338,10 +339,10 @@ load_inode_table:
     pop es
     popad
     ret
-inode_table_location: dd 0
-current_inode_table: dw 0
-         .block_num: dd 0
 hex_to_ascii: db "0123456789abcdef?????"
+boot_folder_not_found: db "boot folder not found",0
+boot_file_not_found: db "boot file not found",0
+invalid_directory_entry: db "invalid directory entry",0
 times 512*2-($-$$) db 0
 end_of_second_stage:
 superblock:
