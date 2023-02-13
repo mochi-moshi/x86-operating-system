@@ -14,6 +14,10 @@ BBIN=build/bin
 build-partial: partial-clean build
 build-all: clean build
 build: $(BIN)/disk.img $(BIN)/bootsector.bin $(BIN)/bootloader.bin
+	mkdir -p $(BIN)/fs
+	mkdir -p $(BIN)/fs/boot
+	cp -R $(SRC)/root/* $(BIN)/fs
+	sudo mkfs.ext2 -d bin/fs /dev/loop1
 	dd if=$(BIN)/bootsector.bin of=$(BIN)/disk.img bs=440 count=1 conv=notrunc > /dev/null
 	dd if=$(BIN)/bootloader.bin of=$(BIN)/disk.img seek=2048 bs=512 conv=notrunc > /dev/null
 
@@ -22,9 +26,6 @@ $(BIN)/disk.img:
 	echo "n\np\n1\n2048\n131071\na\nw" | fdisk $(BIN)/disk.img
 	sudo losetup /dev/loop0 $(BIN)/disk.img
 	sudo losetup /dev/loop1 $(BIN)/disk.img -o 1048576
-	sudo mkfs.ext2 -d $(SRC)/root /dev/loop1
-	mkdir -p bin/fs
-	sudo mount /dev/loop1 bin/fs
 
 $(BUILD)/bootsector.o: $(SRC)/bootsector/bootsector.s
 	nasm -f elf32 -g3 -F dwarf $< -o $@
@@ -73,11 +74,10 @@ debug: $(BIN)/disk.img $(BUILD)/debug/$(dbgfile).elf
 	-ex 'break *0x7c00' \
 	-ex 'continue'
 partial-clean:
-	-rm -rf build/*.o bin/*.bin
+	-rm -rf build/*.o bin/*.bin bin/fs/*
 
 clean:
-	-sudo umount bin/fs
 	-rm -rf bin/fs
 	-sudo losetup -d /dev/loop0
 	-sudo losetup -d /dev/loop1
-	-rm -rf build/*.o bin/*.bin bin/disk.img
+	-rm -rf build/*.o bin/*.bin bin/fs/* bin/disk.img

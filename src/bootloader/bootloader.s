@@ -46,16 +46,33 @@ load_root_inode_data:
     mov dword [tmp_pointer], ebx
     ; Assuming valid and the root directory is not hashed
     mov edx, [ebx+40] ; block pointer 0
-    mov bx, 0x500
+    mov bx, inode_loc
     call read_block
 search_for_boot_file:
-    mov bx, 0x500 ; skip . and ..
-    add bx, word [bx+4]
-    add bx, word [bx+4]
-    add bx, word [bx+4]
+    mov bx, inode_loc
+    add bx, word [bx+4] ; skip .
+    add bx, word [bx+4] ; skip ..
     mov si, bx
     add si, 8
     movsx cx, byte [bx+6]
+    call printc
+    mov ax, 0xe0a
+    int 0x10
+    mov ax, 0xe0d
+    int 0x10
+    mov eax, dword [bx]
+    call print_eax
+    dec eax
+    movzx ecx, word [superblock+88]
+    mul ecx
+    mov ebx, dword [inode_table_location]
+    add ebx, eax
+    mov dword [tmp_pointer], ebx
+    mov edx, [ebx+40]
+    mov bx, inode_loc
+    call read_block
+    mov si, inode_loc
+    mov cx, 25
     call printc
     cli
 stall:
@@ -86,6 +103,7 @@ printc:
     loop .loop
     pop ax
     pop si
+    ret
 ; edx - block address
 ; es:bx - location to load at
 read_block:
