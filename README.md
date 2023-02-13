@@ -7,9 +7,8 @@
     - [x] Relocate self to 0x0060:0
     - [x] Load first bootable partition to 0x7c00 and run it
   - [ ] Bootloader
+    - [ ] Find kernel entry file
     - [ ] Enter 32 bit protected mode
-    - [ ] Load first bootable partition at 1Mb and jump to it
-      - [ ] Display Error if not found
     - [ ] Query Memory
     - [ ] Configure video mode
       - [ ] Allow to choose differet compatable video modes
@@ -48,12 +47,6 @@ sudo losetup /dev/loop1 disk.img -o 1048576
 Format image
 
 ```sh
-mkfs.fat -f 2 -M 0xF8 /dev/loop1
-```
-
-Mount image:
-
-```sh
 mkdir -p bin/fs 
-sudo mount /dev/loop1 bin/fs
+mkfs.ext2 -d bin/fs /dev/loop1
 ```
