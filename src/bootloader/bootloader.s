@@ -14,27 +14,69 @@ load_2nd_stage_and_superblock:
     mov cx, 3
     mov bx, end_of_bootsector
     call read_sectors
+    mov cl, byte [superblock+24] ; log2(Block size) - 10 
+    inc cl ; Block size base = 2 sectors
+    mov byte [block_to_sector], cl
+    mov bx, 1
+    shl bx, cl
+    mov word [sectors_per_block], bx
+    mov eax, 512
+    mul bx
+    mov ebx, superblock+1024
+    add ebx, eax
+    mov dword [inode_table_location], ebx
 load_block_group_table:
     mov edx, dword [superblock+20] ; Block address of superblock
     inc edx ; Block address of block group table
-    mov ecx, dword [superblock+24] ; log2(Block size) - 10 
-    inc ecx ; Block size base = 2 sectors
-    shld eax, edx, cl ; High Block address in sectors
-    shl edx, cl       ; Low  Block address in sectors
-    shl cx, 2         ;      Block size    in sectors
     mov bx, superblock+1024 ; Assuming block size < 3E sectors
     shr bx, 4
     mov es, bx
     mov bx, 0
-    call read_sectors
-find_root_inode:
-    mov eax, 1 ; root inode number - 1
+    call read_block
+_load_inode_table:
+    mov eax, 0 ; root inode number - 1
+    call load_inode_table
     mov edx, 0
     mov ebx, dword [superblock+40] ; inodes per block group
     div ebx
     shl eax, 5 ; 32b block group descriptor
-    mov si, Hello_Message
-    call print
+    add eax, superblock+1024
+    mov ebx, eax
+    mov edx, 0
+    mov edx, dword [ebx+8] ; inode table block address
+    mov cx, word [sectors_per_block]
+    push edx
+    mov eax, 512
+    mul cx
+    mov ebx, superblock+1024
+    add ebx, eax
+    mov dword [tmp_pointer], ebx
+    mov edx, ebx
+    shr edx, 4
+    mov es, dx
+    and ebx, 0xF
+    pop edx
+    call read_block
+    mov bx, 0
+    mov es, bx
+find_root_inode:
+    mov ebx, dword [tmp_pointer]
+    movzx ecx, word [superblock+88]
+    add ebx, ecx
+    mov dword [tmp_pointer], ebx
+    ; Assuming valid and the root directory is not hashed
+    mov edx, [ebx+40] ; block pointer 0
+    mov bx, 0x500
+    call read_block
+search_for_boot_file:
+    mov bx, 0x500 ; skip . and ..
+    add bx, word [bx+4]
+    add bx, word [bx+4]
+    add bx, word [bx+4]
+    mov si, bx
+    add si, 8
+    movsx cx, byte [bx+6]
+    call printc
     cli
 stall:
     hlt
@@ -52,7 +94,38 @@ print:
     pop ax
     pop si
     ret
-
+; ds:si - string to print
+; cx - length of string
+printc:
+    push si
+    push ax
+    mov ah, 0x0E
+.loop:
+    lodsb
+    int 0x10
+    loop .loop
+    pop ax
+    pop si
+; edx - block address
+; es:bx - location to load at
+read_block:
+    push eax
+    push edx
+    push bx
+    push cx
+    push es
+    mov cl, byte [block_to_sector]
+    mov eax, 0
+    shld eax, edx, cl ; High Block address in sectors
+    shl edx, cl       ; Low  Block address in sectors
+    mov cx, word [sectors_per_block] 
+    call read_sectors
+    pop es
+    pop cx
+    pop bx
+    pop edx
+    pop eax
+    ret
 ; eax:edx - lba address to start read at (eax upper 4 bytes, edx lower 4 bytes)
 ; cx      - number of sectors to read
 ; es:bx   - segment and offset to read to
@@ -103,11 +176,63 @@ partition:
     .lba_first: dd 0
     .size: dd 0
     .end:
+tmp_pointer: dd 0
+sectors_per_block: dw 0
+block_to_sector: db 0
 drive: db 0
 Hello_Message: db "Hello there!", 0xA, 0xD, 0
 times 510-($-$$) db 0
 dw 0xAA55
 end_of_bootsector:
+print_al:
+    push ebx
+    push ax
+    mov ebx, hex_to_ascii
+    call _print_al
+    pop ax
+    pop ebx
+    ret 
+_print_al:
+    push ax
+    shr al, 4
+    xlatb
+    mov ah, 0xe
+    int 0x10
+    pop ax
+    and al, 0xf
+    xlatb
+    mov ah, 0xe
+    int 0x10
+    ret
+print_ax:
+    push ebx
+    push ax
+    mov ebx, hex_to_ascii
+    call _print_ax
+    pop ax
+    pop ebx
+    ret
+_print_ax:
+    push ax
+    shr ax, 8
+    call _print_al
+    pop ax
+    call _print_al
+    ret
+print_eax:
+    push ebx
+    push eax
+    push eax
+    shr eax, 16
+    mov ebx, hex_to_ascii
+    call _print_ax
+    pop eax
+    call _print_ax
+    pop eax
+    pop ebx
+    ret
+inode_table_location: dd 0
+hex_to_ascii: db "0123456789abcdef?????"
 times 512*2-($-$$) db 0
 end_of_second_stage:
 superblock:
