@@ -1,5 +1,7 @@
 BITS 16
 
+inode_loc equ 0x500
+
 SECTION .text
 _start:
     mov byte [drive], dl
@@ -30,37 +32,15 @@ load_block_group_table:
     inc edx ; Block address of block group table
     mov bx, superblock+1024 ; Assuming block size < 3E sectors
     shr bx, 4
+    push es
     mov es, bx
     mov bx, 0
     call read_block
-_load_inode_table:
-    mov eax, 0 ; root inode number - 1
+    pop es
+    mov eax, 0 ; loading root inode table
     call load_inode_table
-    mov edx, 0
-    mov ebx, dword [superblock+40] ; inodes per block group
-    div ebx
-    shl eax, 5 ; 32b block group descriptor
-    add eax, superblock+1024
-    mov ebx, eax
-    mov edx, 0
-    mov edx, dword [ebx+8] ; inode table block address
-    mov cx, word [sectors_per_block]
-    push edx
-    mov eax, 512
-    mul cx
-    mov ebx, superblock+1024
-    add ebx, eax
-    mov dword [tmp_pointer], ebx
-    mov edx, ebx
-    shr edx, 4
-    mov es, dx
-    and ebx, 0xF
-    pop edx
-    call read_block
-    mov bx, 0
-    mov es, bx
-find_root_inode:
-    mov ebx, dword [tmp_pointer]
+load_root_inode_data:
+    mov ebx, dword [inode_table_location]
     movzx ecx, word [superblock+88]
     add ebx, ecx
     mov dword [tmp_pointer], ebx
@@ -231,7 +211,27 @@ print_eax:
     pop eax
     pop ebx
     ret
+; eax - inode table number
+load_inode_table:
+    pusha
+    push es
+    mov word [current_inode_table], ax 
+    shl eax, 5 ; 32b block group descriptor
+    add eax, superblock+1024 ; goto block descriptor
+    mov ebx, eax
+    mov edx, dword [ebx+8] ; inode table block address
+    mov cx, word [sectors_per_block]
+    mov ebx, dword [inode_table_location]
+    shr ebx, 4
+    mov es, bx
+    mov ebx, dword [inode_table_location]
+    and ebx, 0xF
+    call read_block
+    pop es
+    popa
+    ret
 inode_table_location: dd 0
+current_inode_table: dw 0
 hex_to_ascii: db "0123456789abcdef?????"
 times 512*2-($-$$) db 0
 end_of_second_stage:
