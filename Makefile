@@ -9,7 +9,7 @@ BUILD=build
 BBIN=build/bin
 
 .PHONY: build-clean build partial-clean clean
-#.SILENT:
+.SILENT:
 
 build-partial: partial-clean build
 build-all: clean build
@@ -18,9 +18,9 @@ build: $(BIN)/disk.img $(BIN)/bootsector.bin $(BIN)/bootloader.bin
 	mkdir -p $(BIN)/fs/boot
 	cp -R $(SRC)/root/* $(BIN)/fs
 	cp $(SRC)/bootloader/bootloader.s $(BIN)/fs/boot/entry
-	echo "y\n" | sudo mkfs.ext2 -d bin/fs /dev/loop1
-	dd if=$(BIN)/bootsector.bin of=$(BIN)/disk.img bs=440 count=1 conv=notrunc > /dev/null
-	dd if=$(BIN)/bootloader.bin of=$(BIN)/disk.img seek=2048 bs=512 conv=notrunc > /dev/null
+	sudo mkfs.ext2 -F -q -d bin/fs /dev/loop1 > /dev/null
+	dd if=$(BIN)/bootsector.bin of=$(BIN)/disk.img bs=440 count=1 conv=notrunc status=none
+	dd if=$(BIN)/bootloader.bin of=$(BIN)/disk.img seek=2048 bs=512 conv=notrunc status=none
 
 $(BIN)/disk.img:
 	dd if=/dev/zero of=$(BIN)/disk.img bs=512 count=131072

@@ -48,45 +48,17 @@ load_root_inode_data:
     mov edx, [ebx+40] ; block pointer 0
     mov bx, inode_loc
     call read_block
-search_for_boot_folder:
-    mov ebx, inode_loc
-    add bx, word [bx+4] ; skip .
-    add bx, word [bx+4] ; skip ..
-    mov dx, word [sectors_per_block]
-    shl dx, 9 ; bytes in block
-    add dx, bx ; end of table
-.entry_present:
-    mov eax, dword [bx]
+find_boot_folder:
+    mov si, boot_folder_name
+    mov cl, byte [boot_folder_name.size]
+    call search_for_entry
     test eax, eax
-    jz .not_used
-    mov al, byte [bx+7]
-    cmp al, 2
-    je .folder
-.not_used:
-    mov ax, bx
-    add bx, word [bx+4]
-    cmp ax, bx
-    je .error ; null entry
-    cmp bx, dx
-    jl .entry_present
+    jnz load_boot_folder_data
     mov si, boot_folder_not_found
     call print
     jmp halt
-.error:
-    mov si, invalid_directory_entry
-    call print
-    jmp halt
-.folder:
-    mov al, byte [bx+6]
-    cmp al, byte [boot_folder_name.size]
-    jne .not_used
-    mov si, bx
-    add si, 8
-    mov di, boot_folder_name
-    movzx cx, byte [boot_folder_name.size]
-    repe cmpsb
-    jnz .not_used
 load_boot_folder_data:
+    mov ebx, eax
     mov eax, dword [bx]
     dec eax
     movsx ecx, word [superblock+88]
@@ -97,8 +69,15 @@ load_boot_folder_data:
     mov bx, inode_loc
     call read_block
     mov si, boot_file_name
+find_boot_file:
     mov cl, byte [boot_file_name.size]
     call search_for_entry
+    test eax, eax
+    jnz load_boot_file
+    mov si, boot_file_not_found
+    call print
+    jmp halt
+load_boot_file:
     call print_eax
 halt:
     cli
@@ -191,6 +170,7 @@ boot_folder_name: db "boot"
 boot_file_name:   db "entry"
          .size:   db 5
 boot_folder_not_found: db "boot folder not found",0
+boot_file_not_found: db "boot file not found",0
 invalid_directory_entry: db "invalid directory entry",0
 Hello_Message: db "Hello there!", 0xA, 0xD, 0
 times 510-($-$$) db 0
@@ -219,7 +199,7 @@ search_for_entry:
     je .error ; null entry
     cmp bx, dx
     jl .entry_present
-    mov eax, 0
+    mov dword [__tmp], 0
     jmp .finished
 .error:
     mov si, invalid_directory_entry
@@ -237,10 +217,12 @@ search_for_entry:
     pop cx
     pop si
     jnz .not_used
-    movsx eax, bx
+    mov dword [__tmp], ebx
 .finished:
     popad
+    mov eax, dword [__tmp]
     ret
+__tmp: dd 0
 ; edx - block address
 ; es:bx - location to load at
 read_block:
