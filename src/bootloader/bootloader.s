@@ -68,8 +68,8 @@ load_boot_folder_data:
     mov edx, dword [ebx+40] ; pointer 0
     mov bx, inode_loc
     call read_block
-    mov si, boot_file_name
 find_boot_file:
+    mov si, boot_file_name
     mov cl, byte [boot_file_name.size]
     call search_for_entry
     test eax, eax
@@ -78,7 +78,19 @@ find_boot_file:
     call print
     jmp halt
 load_boot_file:
-    call print_eax
+    mov eax, dword [eax]
+    dec eax
+    xor edx, edx
+    movzx ecx, word [superblock+40]
+    div ecx
+    cmp ax, word [current_inode_table]
+    je .no_update
+    call load_inode_table
+.no_update:
+    mov eax, edx
+    movsx ecx, word [superblock+88]
+    mul ecx
+    jmp load_boot_file_cnt
 halt:
     cli
 stall:
@@ -176,6 +188,30 @@ Hello_Message: db "Hello there!", 0xA, 0xD, 0
 times 510-($-$$) db 0
 dw 0xAA55
 end_of_bootsector:
+load_boot_file_cnt:
+    ; edx:eax - byte offset, ignore edx
+    ; Need to check if new block needs to be loaded
+    ; mov eax, dword [ebx+28]
+    movzx ecx, word [sectors_per_block]
+    shl ecx, 9 ; bytes per block
+    div ecx
+    push edx ; offset of inode into block
+    mov edx, eax ; block offset
+    add edx, dword [current_inode_table.block_num]
+    xor eax, eax
+    mov ebx, dword [inode_table_location]
+    call read_block
+    pop edx
+    add ebx, edx
+    mov edx, dword [ebx+40]
+    push ebx
+    movsx ebx, word [sectors_per_block] 
+    shl ebx, 9
+    add ebx, inode_loc
+    call read_block
+    mov si, bx
+    call print
+    jmp halt
 ; ds:si - name of entry to file
 ; cl - length of name
 ; returns eax = inode number, 0 if not found
@@ -291,6 +327,7 @@ load_inode_table:
     add eax, superblock+1024 ; goto block descriptor
     mov ebx, eax
     mov edx, dword [ebx+8] ; inode table block address
+    mov dword [current_inode_table.block_num], edx
     mov cx, word [sectors_per_block]
     mov ebx, dword [inode_table_location]
     shr ebx, 4
@@ -303,6 +340,7 @@ load_inode_table:
     ret
 inode_table_location: dd 0
 current_inode_table: dw 0
+         .block_num: dd 0
 hex_to_ascii: db "0123456789abcdef?????"
 times 512*2-($-$$) db 0
 end_of_second_stage:

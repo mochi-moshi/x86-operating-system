@@ -17,7 +17,7 @@ build: $(BIN)/disk.img $(BIN)/bootsector.bin $(BIN)/bootloader.bin
 	mkdir -p $(BIN)/fs
 	mkdir -p $(BIN)/fs/boot
 	cp -R $(SRC)/root/* $(BIN)/fs
-	cp $(SRC)/bootloader/bootloader.s $(BIN)/fs/boot/entry
+	cp $(SRC)/root/test.txt $(BIN)/fs/boot/entry
 	sudo mkfs.ext2 -F -q -d bin/fs /dev/loop1 > /dev/null
 	dd if=$(BIN)/bootsector.bin of=$(BIN)/disk.img bs=440 count=1 conv=notrunc status=none
 	dd if=$(BIN)/bootloader.bin of=$(BIN)/disk.img seek=2048 bs=512 conv=notrunc status=none
