@@ -48,32 +48,59 @@ load_root_inode_data:
     mov edx, [ebx+40] ; block pointer 0
     mov bx, inode_loc
     call read_block
-search_for_boot_file:
-    mov bx, inode_loc
+search_for_boot_folder:
+    mov ebx, inode_loc
     add bx, word [bx+4] ; skip .
     add bx, word [bx+4] ; skip ..
+    mov dx, word [sectors_per_block]
+    shl dx, 9 ; bytes in block
+    add dx, bx ; end of table
+.entry_present:
+    mov eax, dword [bx]
+    test eax, eax
+    jz .not_used
+    mov al, byte [bx+7]
+    cmp al, 2
+    je .folder
+.not_used:
+    mov ax, bx
+    add bx, word [bx+4]
+    cmp ax, bx
+    je .error ; null entry
+    cmp bx, dx
+    jl .entry_present
+    mov si, boot_folder_not_found
+    call print
+    jmp halt
+.error:
+    mov si, invalid_directory_entry
+    call print
+    jmp halt
+.folder:
+    mov al, byte [bx+6]
+    cmp al, byte [boot_folder_name.size]
+    jne .not_used
     mov si, bx
     add si, 8
-    movsx cx, byte [bx+6]
-    call printc
-    mov ax, 0xe0a
-    int 0x10
-    mov ax, 0xe0d
-    int 0x10
+    mov di, boot_folder_name
+    movzx cx, byte [boot_folder_name.size]
+    repe cmpsb
+    jnz .not_used
+load_boot_folder_data:
     mov eax, dword [bx]
-    call print_eax
     dec eax
-    movzx ecx, word [superblock+88]
-    mul ecx
+    movsx ecx, word [superblock+88]
+    mul ecx ; assuming still in same table
     mov ebx, dword [inode_table_location]
     add ebx, eax
-    mov dword [tmp_pointer], ebx
-    mov edx, [ebx+40]
+    mov edx, dword [ebx+40] ; pointer 0
     mov bx, inode_loc
     call read_block
-    mov si, inode_loc
-    mov cx, 25
-    call printc
+    mov si, boot_file_name
+    mov cl, byte [boot_file_name.size]
+    call search_for_entry
+    call print_eax
+halt:
     cli
 stall:
     hlt
@@ -104,25 +131,6 @@ printc:
     pop ax
     pop si
     ret
-; edx - block address
-; es:bx - location to load at
-read_block:
-    push eax
-    push edx
-    push bx
-    push cx
-    push es
-    mov cl, byte [block_to_sector]
-    mov eax, 0
-    shld eax, edx, cl ; High Block address in sectors
-    shl edx, cl       ; Low  Block address in sectors
-    mov cx, word [sectors_per_block] 
-    call read_sectors
-    pop es
-    pop cx
-    pop bx
-    pop edx
-    pop eax
     ret
 ; eax:edx - lba address to start read at (eax upper 4 bytes, edx lower 4 bytes)
 ; cx      - number of sectors to read
@@ -178,10 +186,73 @@ tmp_pointer: dd 0
 sectors_per_block: dw 0
 block_to_sector: db 0
 drive: db 0
+boot_folder_name: db "boot"
+           .size: db 4
+boot_file_name:   db "entry"
+         .size:   db 5
+boot_folder_not_found: db "boot folder not found",0
+invalid_directory_entry: db "invalid directory entry",0
 Hello_Message: db "Hello there!", 0xA, 0xD, 0
 times 510-($-$$) db 0
 dw 0xAA55
 end_of_bootsector:
+; ds:si - name of entry to file
+; cl - length of name
+; returns eax = inode number, 0 if not found
+search_for_entry:
+    pushad
+    and cx, 0xFF
+    mov ebx, inode_loc
+    add bx, word [bx+4] ; skip .
+    add bx, word [bx+4] ; skip ..
+    mov dx, word [sectors_per_block]
+    shl dx, 9 ; bytes in block
+    add dx, bx ; end of table
+.entry_present:
+    mov eax, dword [bx]
+    test eax, eax
+    jnz .file
+.not_used:
+    mov ax, bx
+    add bx, word [bx+4]
+    cmp ax, bx
+    je .error ; null entry
+    cmp bx, dx
+    jl .entry_present
+    mov eax, 0
+    jmp .finished
+.error:
+    mov si, invalid_directory_entry
+    call print
+    jmp halt
+.file:
+    mov al, byte [bx+6]
+    cmp al, cl
+    jne .not_used
+    mov di, bx
+    add di, 8
+    push si
+    push cx
+    repe cmpsb
+    pop cx
+    pop si
+    jnz .not_used
+    movsx eax, bx
+.finished:
+    popad
+    ret
+; edx - block address
+; es:bx - location to load at
+read_block:
+    pushad
+    mov cl, byte [block_to_sector]
+    mov eax, 0
+    shld eax, edx, cl ; High Block address in sectors
+    shl edx, cl       ; Low  Block address in sectors
+    mov cx, word [sectors_per_block] 
+    call read_sectors
+    popad
+    ret
 print_al:
     push ebx
     push ax
@@ -231,7 +302,7 @@ print_eax:
     ret
 ; eax - inode table number
 load_inode_table:
-    pusha
+    pushad
     push es
     mov word [current_inode_table], ax 
     shl eax, 5 ; 32b block group descriptor
@@ -246,7 +317,7 @@ load_inode_table:
     and ebx, 0xF
     call read_block
     pop es
-    popa
+    popad
     ret
 inode_table_location: dd 0
 current_inode_table: dw 0
