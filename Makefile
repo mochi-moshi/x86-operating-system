@@ -53,8 +53,8 @@ run: $(BIN)/disk.img
 	-drive format=raw,file=$(BIN)/disk.img,index=0,media=disk \
 	-rtc base=localtime,clock=host,driftfix=slew
 
-DBGFILE=bootsector.elf
-debug: $(BIN)/disk.img $(BUILD)/debug/$(DBGFILE)
+dbgfile=bootloader
+debug: $(BIN)/disk.img $(BUILD)/debug/$(dbgfile).elf
 	-export DISPLAY=:0;\
 	qemu-system-i386 \
 	-s -S \
@@ -63,7 +63,7 @@ debug: $(BIN)/disk.img $(BUILD)/debug/$(DBGFILE)
 	-m 1G \
 	-drive format=raw,file=$(BIN)/disk.img,index=0,media=disk \
 	-rtc base=localtime,clock=host,driftfix=slew & \
-	gdb -ix gdbinit_real_mode.txt $(BUILD)/debug/$(DBGFILE) \
+	gdb -ix gdbinit_real_mode.txt $(BUILD)/debug/$(dbgfile).elf \
         -ex 'target remote localhost:1234' \
         -ex 'set architecture i8086' \
 	-ex 'set tdesc filename target.xml' \
