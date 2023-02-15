@@ -1,19 +1,14 @@
 BITS 16
 
+SECTION .text
 _start:
     mov di, partition
-    push ds
-    push ds
-    push es
-    pop ds
-    pop es
     mov cx, drive-partition+1
     shr cx, 2
     inc cx
 .mov:
     movsd 
     loop .mov
-    pop ds
 load_SMAP_entries:
     mov si, memory_message
     call print
@@ -122,23 +117,7 @@ load_video_mode:
         mov ax, [bpp]
         cmp al, [mode_info_block.bits_per_pixel]
         jne .next_mode
-
-        ;  cli
-        ;  hlt
-
-        ; ; enable mode
-        ; mov ax, 0x4F02
-        ; mov bx, [mode]
-        ; ; or bx,  0x4000
-        ; xor di, di
-        ; int 0x10
-
-        ; mov ax, 0x4F
-
-        ; cmp ax, 0x4F
-        ; jne error
-
-        jmp Load_Kernel
+        jmp load_GDT
     .next_mode:
         mov ax, [t_segment]
         mov fs, ax
@@ -154,14 +133,57 @@ load_video_mode:
         call print
         cli
         hlt
-
-Load_Kernel:
-    mov si, message
-    call print
+load_GDT:
     cli
-.loop:
-    hlt
-    jmp .loop
+    lgdt [ptgdt]
+    sti
+
+    ; enable mode
+    ;mov ax, 0x4F02
+    ;mov bx, [mode]
+    ; or bx,  0x4000
+    ;xor di, di
+    ;int 0x10
+
+    ;mov ax, 0x4F
+
+    ;cmp ax, 0x4F
+    ;jne error
+
+    ; enable A20 through keyboard microcontroller
+    mov al, 2
+    out 0x92, al
+
+enter_protected_mode:
+    cli
+    mov eax, cr0
+    or eax, 1
+    mov cr0, eax
+
+    jmp 0x08:pre_kern
+align 8
+ptgdt:
+    dw GDT.end - GDT.null - 1
+    dd GDT
+GDT:
+    .null:
+        dd 0
+        dd 0
+    .kernel_code:
+        dw 0xFFFF        ; limit low
+        dw 0            ; base low
+        db 0            ; base mid
+        db 10011010b    ; access
+        db 11001111b    ; granuality
+        db 0            ; base high
+    .kernel_data:
+        dw 0xFFFF        ; limit low
+        dw 0            ; base low
+        db 0            ; base mid
+        db 10010010b    ; access
+        db 11001111b    ; granuality
+        db 0            ; base high
+    .end:
 print:
     mov ah, 0xe
 .loop:
@@ -188,6 +210,7 @@ partition:
     .lba_first: dd 0
     .size: dd 0
     .end:
+align 4
 inode_table_location: dd 0
 current_inode_table: dw 0
          .block_num: dd 0
@@ -271,5 +294,33 @@ align 4
 SMAP_entries:
     .number_of_entries: dw 0
     times 510 db 0
-dd 0x12345678
-times 4096-($-$$) db 0
+align 512
+kernel_pass:
+    .smap_pointer: dd SMAP_entries
+    .vbe_pointer: dd vbe_info_block
+    .mode_pointer: dd mode_info_block
+    .partition_start: dd partition
+    
+BITS 32
+pre_kern:
+    cli
+
+    mov ax, 0x10
+    mov ds, ax
+    mov es, ax
+    mov fs, ax
+    mov gs, ax
+    mov ss, ax
+    mov esp, 0x7FFFF
+    mov ebp, esp
+
+    xor eax, eax
+    mov eax, kernel_pass
+    xor ebx, ebx
+    xor ecx, ecx
+    xor edx, edx
+    xor esi, esi
+    xor edi, edi
+    call 0x8:kernel_entry
+align 4
+extern kernel_entry

@@ -107,14 +107,9 @@ load_boot_file_cnt:
     add ebx, edx
     mov edx, dword [ebx+40]
     push ebx
-    movsx ebx, word [sectors_per_block] 
-    shl ebx, 9
-    add ebx, inode_loc
+    mov ebx, 0x1600
     call read_block
 jmp_to_third_stage:
-    mov ax, bx
-    shr ax, 4
-    mov ds, ax
     mov si, partition
     jmp ebx
 halt:

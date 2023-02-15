@@ -1,7 +1,6 @@
-CC=clang
-CWARN=
-CFLAGS= $(CWARN)
-LINKER_FLAGS=-m elf_i386 --oformat binary -M
+CC=gcc
+CWARN += -Wall
+CFLAGS += $(CWARN) -c -std=c99 -m32 -march=i386 -masm=intel -ffreestanding -fno-builtin -fno-pie -nostdinc -Os
 
 SRC=src
 BIN=bin
@@ -37,14 +36,17 @@ $(BUILD)/bootloader.o: $(SRC)/bootloader/bootloader.s
 $(BUILD)/entry.o: $(SRC)/bootloader/entry.s
 	nasm -f elf32 -g3 -F dwarf $< -o $@
 
-$(BUILD)/debug/bootsector.elf: $(BUILD)/bootsector.o
-	ld -T$(BUILD)/linkers/bootsector.ld -melf_i386 $< -o $@
+$(BUILD)/entry_c.o: $(SRC)/bootloader/entry_c.c
+	$(CC) $(CFLAGS) -I$(SRC)/common_h $^ -o $@
 
-$(BUILD)/debug/bootloader.elf: $(BUILD)/bootloader.o
-	ld -T$(BUILD)/linkers/bootloader.ld -melf_i386 $< -o $@
+bootsector.elf: $(BUILD)/bootsector.o
+	ld -T$(BUILD)/linkers/bootsector.ld -melf_i386 $< -o $(BUILD)/debug/$@
 
-$(BUILD)/debug/entry.elf: $(BUILD)/entry.o
-	ld -T$(BUILD)/linkers/entry_db.ld -melf_i386 $< -o $@
+bootloader.elf: $(BUILD)/bootloader.o
+	ld -T$(BUILD)/linkers/bootloader.ld -melf_i386 $< -o $(BUILD)/debug/$@
+
+entry.elf: $(BUILD)/entry.o $(BUILD)/entry_c.o
+	ld -T$(BUILD)/linkers/entry.ld -melf_i386 --nmagic $^ -o $(BUILD)/debug/$@
 
 $(BIN)/bootsector.bin: $(BUILD)/bootsector.o
 	ld -T$(BUILD)/linkers/bootsector.ld -melf_i386 --oformat=binary $< -o $@
@@ -52,8 +54,8 @@ $(BIN)/bootsector.bin: $(BUILD)/bootsector.o
 $(BIN)/bootloader.bin: $(BUILD)/bootloader.o
 	ld -T$(BUILD)/linkers/bootloader.ld -melf_i386 --oformat=binary $< -o $@
 
-$(BIN)/entry.bin: $(BUILD)/entry.o
-	ld -T$(BUILD)/linkers/entry.ld -melf_i386 --oformat=binary $< -o $@
+$(BIN)/entry.bin: $(BUILD)/entry.o $(BUILD)/entry_c.o
+	ld -T$(BUILD)/linkers/entry.ld -melf_i386 --nmagic --oformat=binary $^ -o $@
 
 run: $(BIN)/disk.img
 	-export DISPLAY=:0;\
@@ -65,7 +67,7 @@ run: $(BIN)/disk.img
 	-rtc base=localtime,clock=host,driftfix=slew
 
 dbgfile=bootloader
-debug: $(BIN)/disk.img $(BUILD)/debug/$(dbgfile).elf
+debug: $(BIN)/disk.img $(dbgfile).elf
 	-export DISPLAY=:0;\
 	qemu-system-i386 \
 	-s -S \

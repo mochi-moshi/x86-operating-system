@@ -1,13 +1,21 @@
 SECTIONS
 {
-    . = 0;
+    . = 0x1500;
     .text : {
+        *entry.o;
+        *(.text.first);
         *(.text);
+    }
+    .rodata : {
+        *(.rodata);
     }
     .data : {
         *(.data);
     }
     .bss : {
         *(.bss);
+    }
+    /DISCARD/ : {
+        *(.eh_frame);
     }
 }
