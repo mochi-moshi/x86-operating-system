@@ -7,12 +7,12 @@ BIN=bin
 BUILD=build
 BBIN=build/bin
 
-.PHONY: build-clean build partial-clean clean
+.PHONY: build-clean build partial-clean clean ensure
 .SILENT:
 
 build-partial: partial-clean build
 build-all: clean build
-build: $(BIN)/disk.img $(BIN)/bootsector.bin $(BIN)/bootloader.bin $(BIN)/entry.bin
+build: ensure $(BIN)/disk.img $(BIN)/bootsector.bin $(BIN)/bootloader.bin $(BIN)/entry.bin
 	mkdir -p $(BIN)/fs
 	mkdir -p $(BIN)/fs/boot
 	cp -R $(SRC)/root/* $(BIN)/fs
@@ -92,3 +92,7 @@ clean:
 	-sudo losetup -d /dev/loop0
 	-sudo losetup -d /dev/loop1
 	-rm -rf build/*.o bin/*.bin bin/fs/* bin/disk.img
+
+ensure:
+	mkdir -p $(BIN)
+	mkdir -p $(BUILD)/debug
