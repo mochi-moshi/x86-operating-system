@@ -294,7 +294,7 @@ align 4
 SMAP_entries:
     .number_of_entries: dw 0
     times 510 db 0
-align 512
+align 4
 kernel_pass:
     .smap_pointer: dd SMAP_entries
     .vbe_pointer: dd vbe_info_block

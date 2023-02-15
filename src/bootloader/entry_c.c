@@ -4,17 +4,19 @@
 
 static void print(const char* str);
 static void print_dword(uint32_t value);
+static void clear_screen();
+
 __attribute__((noreturn))
 __attribute__((section (".text.first")))
 void kernel_entry() {
     kernel_pass_t* kernel_pass;
     __asm__ __volatile__ ("mov %0, %%eax" : "=r"(kernel_pass));
-    print("TEST\n");
-    print_dword((uint32_t) kernel_pass);
-    print_dword((uint32_t) kernel_pass->smap);
-    print_dword((uint32_t) kernel_pass->vbe);
-    print_dword((uint32_t) kernel_pass->mode);
-    print_dword((uint32_t) kernel_pass->partition);
+    
+    clear_screen();
+    print("Partition:\n    lba: ");
+    print_dword(kernel_pass->partition->lba_first);
+    print("\n    size: ");
+    print_dword(kernel_pass->partition->size);
     cli();
     for(;;) {
         hlt();
@@ -29,14 +31,16 @@ static void print(const char* str) {
     for(;*str != 0 && cursor - SCREEN < SIZE; str++, cursor+=2) {
         if(*str == 0xA || *str == 0xD) {
             ptrdiff_t offset = cursor-SCREEN;
-            if(offset % WIDTH)
-                cursor += WIDTH - offset - 2;
-            else
-                cursor += WIDTH - 2;
+            cursor += WIDTH - (offset % WIDTH) - 2;
         } else { 
             *cursor = *str;
         }
     }
+}
+static void clear_screen() {
+    for(cursor = SCREEN; cursor - SCREEN < SIZE; cursor += 2)
+        *cursor = ' ';
+    cursor = SCREEN;
 }
 const char hta[] = "0123456789ABCDEF";
 static void print_dword(uint32_t value) {

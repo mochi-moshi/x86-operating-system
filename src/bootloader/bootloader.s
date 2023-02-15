@@ -107,7 +107,7 @@ load_boot_file_cnt:
     add ebx, edx
     mov edx, dword [ebx+40]
     push ebx
-    mov ebx, 0x1600
+    mov ebx, 0x1500
     call read_block
 jmp_to_third_stage:
     mov si, partition
