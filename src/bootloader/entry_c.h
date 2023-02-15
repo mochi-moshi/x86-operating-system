@@ -15,14 +15,6 @@ typedef struct __attribute__((packed)) {
 } smap_t;
 
 typedef struct __attribute__((packed)) {
-
-} vbe_info_block_t;
-
-typedef struct __attribute__((packed)) {
-
-} mode_info_block_t;
-
-typedef struct __attribute__((packed)) {
     uint8_t status;
     uint8_t chs_first_dh;
     uint8_t chs_first_cl;
@@ -37,9 +29,16 @@ typedef struct __attribute__((packed)) {
 
 typedef struct __attribute__((packed)) {
     smap_t            *smap;
-    vbe_info_block_t  *vbe;
-    mode_info_block_t *mode;
+    ptr_t              vbe;
+    ptr_t              mode;
     partition_info_t  *partition;
 } kernel_pass_t;
+
+static void print(const char* str);
+static void print_byte(uint8_t value);
+static void print_word(uint16_t value);
+static void print_dword(uint32_t value);
+static void print_qword(uint64_t value);
+static void clear_screen();
 
 #endif
