@@ -1,6 +1,10 @@
 #ifndef ENTRY_C
 #define ENTRY_C
 #include "stddef.h"
+#include "stdlib.h"
+#include "gdt.h"
+#include "idt.h"
+//#include "pic.h"
 
 typedef struct __attribute__((packed)) {
     uint64_t base_address;
@@ -33,6 +37,8 @@ typedef struct __attribute__((packed)) {
     ptr_t              mode;
     partition_info_t  *partition;
 } kernel_pass_t;
+
+void default_int(ptr_t stack) __attribute__((interrupt));
 
 static void print(const char* str);
 static void print_byte(uint8_t value);

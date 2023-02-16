@@ -1,7 +1,8 @@
 #include "entry_c.h"
 #include "asm.h"
-#define _GLOBAL_OFFSET_TABLE_
 
+static GDT_entry_t GDT[3];
+static IDT_t IDT;
 
 __attribute__((noreturn))
 __attribute__((section (".text.first")))
@@ -45,6 +46,17 @@ void kernel_entry() {
     }
 
     // TODO: SETUP GDT and IDT
+    memset(GDT, 0, sizeof(GDT));
+    memset(IDT, 0, sizeof(IDT));
+
+    gdt_set_entry(&GDT[1], 0xFFFFF, 0, 0x9A, 0xC);
+    gdt_set_entry(&GDT[2], 0xFFFFF, 0, 0x92, 0xC);
+    gdt_load(GDT, 3);
+
+    idt_set_entry(&IDT[0], default_int, 0x8, IDT_32BIT_INT, IDT_PRESENT);
+    for(uint8_t i = 1; i > 0; ++i)
+        idt_set_entry(&IDT[i], default_int, 0x8, IDT_32BIT_INT, IDT_PRESENT);
+    idt_load(IDT);
     // TODO: SETUP PIC
     // TODO: SETUP Virtual Memory
     // TODO: Load Kernel Modules into Upper Memory
@@ -54,6 +66,9 @@ void kernel_entry() {
         hlt();
     }
 }
+
+__attribute__((interrupt))
+void default_int(ptr_t stack) { }
 
 static char * const SCREEN = (char*)0xB8000;
 static const ptrdiff_t WIDTH = 80*2;

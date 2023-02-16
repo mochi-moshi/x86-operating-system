@@ -1,6 +1,6 @@
 CC=gcc
 CWARN += -Wall
-CFLAGS += $(CWARN) -c -std=c99 -m32 -march=i386 -masm=intel -ffreestanding -fno-builtin -fno-pie -nostdinc -Os
+CFLAGS += $(CWARN) -c -std=c99 -m32 -march=i386 -masm=intel -ffreestanding -fno-builtin -fno-pie -nostdinc -Os -mgeneral-regs-only
 
 SRC=src
 BIN=bin
