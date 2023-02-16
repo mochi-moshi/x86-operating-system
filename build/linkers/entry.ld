@@ -15,10 +15,6 @@ SECTIONS
     .bss : {
         *(.bss);
     }
-    .end : {
-        . = 0x24FC;
-        LONG(0x78563412);
-    }
     /DISCARD/ : {
         *(.eh_frame);
         *(.note*);

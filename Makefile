@@ -40,22 +40,22 @@ $(BUILD)/entry_c.o: $(SRC)/bootloader/entry_c.c
 	$(CC) $(CFLAGS) -I$(SRC)/common_h $^ -o $@
 
 bootsector.elf: $(BUILD)/bootsector.o
-	ld -T$(BUILD)/linkers/bootsector.ld -melf_i386 $< -o $(BUILD)/debug/$@
+	ld -T$(BUILD)/linkers/bootsector.ld $(LDFLAGS) -melf_i386 $< -o $(BUILD)/debug/$@
 
 bootloader.elf: $(BUILD)/bootloader.o
-	ld -T$(BUILD)/linkers/bootloader.ld -melf_i386 $< -o $(BUILD)/debug/$@
+	ld -T$(BUILD)/linkers/bootloader.ld $(LDFLAGS) -melf_i386 $< -o $(BUILD)/debug/$@
 
 entry.elf: $(BUILD)/entry.o $(BUILD)/entry_c.o
-	ld -T$(BUILD)/linkers/entry.ld -melf_i386 --nmagic $^ -o $(BUILD)/debug/$@
+	ld -T$(BUILD)/linkers/entry.ld $(LDFLAGS) -melf_i386 --nmagic $^ -o $(BUILD)/debug/$@
 
 $(BIN)/bootsector.bin: $(BUILD)/bootsector.o
-	ld -T$(BUILD)/linkers/bootsector.ld -melf_i386 --oformat=binary $< -o $@
+	ld -T$(BUILD)/linkers/bootsector.ld $(LDFLAGS) -melf_i386 --oformat=binary $< -o $@
 
 $(BIN)/bootloader.bin: $(BUILD)/bootloader.o
-	ld -T$(BUILD)/linkers/bootloader.ld -melf_i386 --oformat=binary $< -o $@
+	ld -T$(BUILD)/linkers/bootloader.ld $(LDFLAGS) -melf_i386 --oformat=binary $< -o $@
 
 $(BIN)/entry.bin: $(BUILD)/entry.o $(BUILD)/entry_c.o
-	ld -T$(BUILD)/linkers/entry.ld -melf_i386 --nmagic --oformat=binary $^ -o $@
+	ld -T$(BUILD)/linkers/entry.ld $(LDFLAGS) -melf_i386 --nmagic --oformat=binary $^ -o $@
 
 run: $(BIN)/disk.img
 	-export DISPLAY=:0;\

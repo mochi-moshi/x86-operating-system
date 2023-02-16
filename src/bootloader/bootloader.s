@@ -104,12 +104,28 @@ load_boot_file_cnt:
     mov ebx, dword [inode_table_location]
     call read_block
     pop edx
-    add ebx, edx
-    mov edx, dword [ebx+40]
+    ; Read up to 6 valid blocks
+    add ebx, edx ; Inode entry
     push ebx
-    mov ebx, 0x1500
+    mov eax, 0
+    mov cx, 6
+valid_block_pointer:
+    pop ebx
+    mov edx, dword [ebx+40]
+    test edx, edx
+    jz jmp_to_third_stage
+    add ebx, 4
+    push ebx
+    mov ebx, 0x150
+    mov es, ebx
+    mov ebx, eax
     call read_block
+    add eax, 0x1000
+    loop valid_block_pointer
 jmp_to_third_stage:
+    mov ebx, 0
+    mov es, ebx
+    mov ebx, 0x1500
     mov si, partition
     jmp ebx
 halt:
@@ -179,21 +195,21 @@ partition:
     .lba_first: dd 0
     .size: dd 0
     .end:
-inode_table_location: dd 0
-current_inode_table: dw 0
-         .block_num: dd 0
 sectors_per_block: dw 0
 block_to_sector: db 0
 drive: db 0
-boot_folder_name: db "boot"
-           .size: db 4
-boot_file_name:   db "entry"
-         .size:   db 5
 tmp_pointer: dd 0
 disk_read_err: db "Disk read err", 0
 times 510-($-$$) db 0
 dw 0xAA55
 end_of_bootsector:
+inode_table_location: dd 0
+current_inode_table: dw 0
+         .block_num: dd 0
+boot_folder_name: db "boot"
+           .size: db 4
+boot_file_name:   db "entry"
+         .size:   db 5
 ; ds:si - string to print
 ; cx - length of string
 printc:
