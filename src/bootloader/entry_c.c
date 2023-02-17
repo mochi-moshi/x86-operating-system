@@ -100,6 +100,11 @@ void kernel_entry() {
     }
     vmm_init(Regions, count);
     vmm_enter();
+    print("Entered Virtual Memory Mode\n");
+
+    partition_info_t *partition = kernel_pass->partition;
+    drive_init(partition->type, partition->lba_first, partition->size);
+    print("Initialized Drive\n");
     // TODO: Load Kernel Modules into Upper Memory
 
     for(;;) {
