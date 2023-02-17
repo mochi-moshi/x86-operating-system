@@ -1,6 +1,7 @@
 #ifndef VIRTUAL_MEMORY_MANAGER_H
 #define VIRTUAL_MEMORY_MANAGER_H
-#define "stddef.h"
+#include "stddef.h"
+#include "physical_memory_manager.h"
 
 #define VMM_PAGES_PER_TABLE 1024
 #define VMM_TABLES_PER_DIRECTORY 1024
@@ -49,5 +50,19 @@ typedef vmm_pt_entry_t vmm_page_table_t[VMM_PAGES_PER_TABLE] __attribute__((pack
 //        vmm_pd_entry_t entries[VMM_TABLES_PER_DIRECTORY];
 //} vmm_page_directory_t;
 typedef vmm_pd_entry_t vmm_page_directory_t[VMM_TABLES_PER_DIRECTORY] __attribute__((packed));
+
+bool_t vmm_init(void);
+
+pt_entry_t *vmm_get_pt_entry(vmm_page_table_t *pt, ptr_t vaddr);
+pd_entry_t *vmm_get_pd_entry(vmm_page_directory_t *pd, ptr_t vaddr);
+pt_entry_t *vmm_get_page(ptr_t addr);
+
+ptr_t vmm_allocate_page(pt_entry_t *page);
+void  vmm_free_page    (pt_entry_t *page);
+
+bool_t vmm_set_page_directory(vmm_page_directory_t *pd);
+void vmm_flush_table_entry(ptr_t address);
+bool_t vmm_map_page(ptr_t physical_address, ptr_t virtual_address);
+void vmm_unmap_page(ptr_t vaddr);
 
 #endif

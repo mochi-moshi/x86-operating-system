@@ -1,6 +1,9 @@
 #include "entry_c.h"
 #include "asm.h"
 
+extern ptr_t kernel_loader_begin;
+extern ptr_t kernel_loader_end;
+
 static GDT_entry_t GDT[3];
 static IDT_t IDT;
 static memory_region_t *Regions[8];
@@ -75,6 +78,9 @@ void kernel_entry() {
     // TODO: SETUP Virtual Memory
     for(uint8_t i = 0; Regions[i]; i++) {
         memory_region_t *region = Regions[i];
+        if(region->start_address <= kernel_loader_begin) {
+            pmm_deinitialize_memory_region(&region->blocks_desc, kernel_loader_begin, kernel_loader_end-kernel_loader_begin);
+        }
         print("Start Address:    ");
         print_dword((uint32_t)region->start_address);
         print("\nEnd Address:      ");
