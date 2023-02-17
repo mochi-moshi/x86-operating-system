@@ -3,6 +3,7 @@
 
 static GDT_entry_t GDT[3];
 static IDT_t IDT;
+static memory_region_t *Regions[8];
 
 __attribute__((noreturn))
 __attribute__((section (".text.first")))
@@ -11,36 +12,46 @@ void kernel_entry() {
     __asm__ __volatile__ ("mov %0, %%eax" : "=r"(kernel_pass));
     
     clear_screen();
-    print("Partition:\n    lba: ");
-    print_dword(kernel_pass->partition->lba_first);
-    print("\n    size: ");
-    print_dword(kernel_pass->partition->size);
+//    print("Partition:\n    lba: ");
+//    print_dword(kernel_pass->partition->lba_first);
+//    print("\n    size: ");
+//    print_dword(kernel_pass->partition->size);
     
     smap_t* smap = kernel_pass->smap;
+    ptr_t current_start = 0;
+    size_t current_size = 0;
+    uint8_t current_region = 0;
     for(uint16_t i = 0; i < smap->length; i++) {
         smap_entry_t entry = smap->entries[i];
-        print("\nBase Address: ");
-        print_qword(entry.base_address);
-        print("\nLength: ");
-        print_qword(entry.length);
-        print("\nType: ");
+        if(entry.type == 1) {
+            if(current_size == 0) current_start = (ptr_t)entry.base_address;
+            current_size += (size_t)entry.length;
+        } else if(current_size) {
+            Regions[current_region++] = pmm_create_region(current_start, current_start+current_size);
+            current_size = 0;
+        }
+//        print("\nBase Address: ");
+//        print_qword(entry.base_address);
+//        print("\nLength: ");
+//        print_qword(entry.length);
+//        print("\nType: ");
         switch(entry.type) {
             case 1:
-                print("Usable");
+//                print("Usable");
                 break;
             case 2:
-                print("Reserved");
+//                print("Reserved");
                 break;
             case 3:
-                print("ACPI reclaimable");
+//                print("ACPI reclaimable");
                 break;
             case 4:
-                print("ACPI NVS");
+//                print("ACPI NVS");
                 break;
             case 5:
                 break;
             default:
-                print_dword(entry.type);
+//                print_dword(entry.type);
                 break;
         }
     }
@@ -62,6 +73,24 @@ void kernel_entry() {
     idt_load(IDT);
     sti();
     // TODO: SETUP Virtual Memory
+    for(uint8_t i = 0; Regions[i]; i++) {
+        memory_region_t *region = Regions[i];
+        print("Start Address:    ");
+        print_dword((uint32_t)region->start_address);
+        print("\nEnd Address:      ");
+        print_dword((uint32_t)region->end_address);
+        print("\nDescriptor:       ");
+        print_dword((uint32_t)region);
+        print("\nBlocks:           ");
+        print_dword((uint32_t)region->blocks);
+        print("\nBlocks End:       ");
+        print_dword((uint32_t)region->blocks + region->blocks_desc.number_of_bytes);
+        print("\nNumber of Blocks: ");
+        print_dword(region->blocks_desc.number_of_blocks);
+        print("\nNumber of Bytes:  ");
+        print_dword(region->blocks_desc.number_of_bytes);
+        print("\n\n");
+    }
     // TODO: Load Kernel Modules into Upper Memory
 
     for(;;) {

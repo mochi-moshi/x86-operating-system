@@ -14,6 +14,7 @@ typedef void* ptr_t;
 typedef uint32_t ptrdiff_t;
 typedef uint32_t size_t;
 typedef uint32_t addr_t;
+typedef uint8_t bool_t;
 
 #define UINT8_MAX 128
 #define INT8_MIN -127
