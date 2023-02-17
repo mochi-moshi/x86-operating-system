@@ -6,6 +6,7 @@
 #include "idt.h"
 #include "pic.h"
 #include "physical_memory_manager.h"
+#include "virtual_memory_manager.h"
 
 typedef struct __attribute__((packed)) {
     uint64_t base_address;

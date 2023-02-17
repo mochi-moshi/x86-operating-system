@@ -76,10 +76,11 @@ void kernel_entry() {
     idt_load(IDT);
     sti();
     // TODO: SETUP Virtual Memory
-    for(uint8_t i = 0; Regions[i]; i++) {
-        memory_region_t *region = Regions[i];
+    size_t count = 0;
+    for(uint8_t count = 0; Regions[count]; count++) {
+        memory_region_t *region = Regions[count];
         if(region->start_address <= kernel_loader_begin) {
-            pmm_deinitialize_memory_region(&region->blocks_desc, kernel_loader_begin, kernel_loader_end-kernel_loader_begin);
+            pmm_deinitialize_memory_region(&region->blocks_desc, (size_t)kernel_loader_begin, kernel_loader_end-kernel_loader_begin);
         }
         print("Start Address:    ");
         print_dword((uint32_t)region->start_address);
@@ -97,6 +98,8 @@ void kernel_entry() {
         print_dword(region->blocks_desc.number_of_bytes);
         print("\n\n");
     }
+    vmm_init(Regions, count);
+    vmm_enter();
     // TODO: Load Kernel Modules into Upper Memory
 
     for(;;) {

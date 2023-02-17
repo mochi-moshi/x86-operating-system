@@ -12,7 +12,7 @@
     - [x] Query Memory
     - [x] Configure video mode
       - [ ] Allow to choose different compatable video modes
-    - [ ] Setup Virtual Memory
+    - [x] Setup Virtual Memory
       - [ ] Create Simple Malloc
     - [ ] Load Kernel into Upper Memory
   - [ ] Filesystem
