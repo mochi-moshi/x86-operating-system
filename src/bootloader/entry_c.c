@@ -56,12 +56,14 @@ void kernel_entry() {
     idt_set_entry(&IDT[0], default_int, 0x8, IDT_32BIT_INT, IDT_PRESENT);
     for(uint8_t i = 1; i > 0; ++i)
         idt_set_entry(&IDT[i], default_int, 0x8, IDT_32BIT_INT, IDT_PRESENT);
-    idt_load(IDT);
+
     // TODO: SETUP PIC
+    pic_init(IDT, 0x20, 0x28);
+    idt_load(IDT);
+    sti();
     // TODO: SETUP Virtual Memory
     // TODO: Load Kernel Modules into Upper Memory
 
-    cli();
     for(;;) {
         hlt();
     }
@@ -77,6 +79,7 @@ static const ptrdiff_t SIZE = WIDTH*HEIGHT;
 static char * cursor = SCREEN;
 static const char hta[] = "0123456789ABCDEF";
 static char *holder = "0x0000000000000000";
+__attribute__((used))
 static void print(const char* str) {
     for(;*str != 0 && cursor - SCREEN < SIZE; str++, cursor+=2) {
         if(*str == 0xA || *str == 0xD) {
@@ -87,29 +90,34 @@ static void print(const char* str) {
         }
     }
 }
+__attribute__((used))
 static void clear_screen() {
     for(cursor = SCREEN; cursor - SCREEN < SIZE; cursor += 2)
         *cursor = ' ';
     cursor = SCREEN;
 }
+__attribute__((used))
 static void print_byte(uint8_t value) {
     holder[2] = hta[(value >> 4) & 0xF];
     holder[3] = hta[(value >> 8) & 0xF];
     holder[4] = 0;
     print(holder);
 }
+__attribute__((used))
 static void print_word(uint16_t value) {
     for(uint8_t i = 0; i < 4; i++)
         *(holder+5-i) = hta[(value >> (4*i)) & 0xF];
     holder[6] = 0;
     print(holder);
 }
+__attribute__((used))
 static void print_dword(uint32_t value) {
     for(uint8_t i = 0; i < 8; i++)
         *(holder+9-i) = hta[(value >> (4*i)) & 0xF];
     holder[10] = 0;
     print(holder);
 }
+__attribute__((used))
 static void print_qword(uint64_t value) {
     for(uint8_t i = 0; i < 16; i++)
         *(holder+17-i) = hta[(value >> (4*i)) & 0xF];

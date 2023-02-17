@@ -11,10 +11,10 @@
     - [x] Enter 32 bit protected mode
     - [x] Query Memory
     - [x] Configure video mode
-      - [ ] Allow to choose differet compatable video modes
+      - [ ] Allow to choose different compatable video modes
     - [ ] Setup Virtual Memory
       - [ ] Create Simple Malloc
-    - [ ] Load Kernel Modules into upper memory
+    - [ ] Load Kernel into Upper Memory
   - [ ] Filesystem
     - [x] Can search root directory
     - [x] Can traverse subdirectories
@@ -25,6 +25,9 @@
   - [ ] Simple linux-like terminal
     - [ ] Command lexing
     - [ ] PATH searching
+- [ ] Expanded
+  - [ ] Break up Kernel into Modules
+  - [ ] Seperate Kernel and User space
 
 ## Creating the disk image
 

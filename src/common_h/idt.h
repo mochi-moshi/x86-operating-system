@@ -13,6 +13,23 @@
 #define IDT_DPL_3   0b0110
 #define IDT_PRESENT 0b1000
 
+typedef struct {
+    uint32_t eip;
+    uint32_t cs;
+    uint32_t eflags;
+} interrupt_stack_t;
+
+typedef struct {
+    uint32_t errno;
+    uint32_t eip;
+    uint32_t cs;
+    uint32_t eflags;
+} error_stack_t;
+
+typedef void(*interrupt_handler_t)(interrupt_stack_t*) __attribute__((interrupt));
+typedef void(*error_handler_t)(error_stack_t*) __attribute__((interrupt));
+typedef union { interrupt_handler_t ihandle; error_handler_t ehandler; } idt_handler_t;
+
 typedef union {
     struct __attribute__((packed)) {
         uint16_t address_low;

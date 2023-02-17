@@ -4,7 +4,7 @@
 #include "stdlib.h"
 #include "gdt.h"
 #include "idt.h"
-//#include "pic.h"
+#include "pic.h"
 
 typedef struct __attribute__((packed)) {
     uint64_t base_address;
