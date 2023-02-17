@@ -1,6 +1,6 @@
 CC=gcc
 CWARN += -Wall -Wno-unused-function -Wno-address-of-packed-member -Wno-int-to-pointer-cast
-CFLAGS += $(CWARN) -c -std=gnu99 -m32 -march=i386 -masm=intel -ffreestanding -fno-builtin -fno-pie -nostdinc -Os -mgeneral-regs-only
+CFLAGS += $(CWARN) -c -ggdb -std=gnu99 -m32 -march=i386 -masm=intel -ffreestanding -fno-builtin -fno-pie -nostdinc -Os -mgeneral-regs-only
 
 SRC=src
 BIN=bin
@@ -63,7 +63,17 @@ run: $(BIN)/disk.img
 	-display gtk \
 	-name "Operating System" \
 	-m 1G \
-	-drive format=raw,file=$(BIN)/disk.img,index=0,media=disk \
+	-drive if=ide,format=raw,file=$(BIN)/disk.img,index=0,media=disk \
+	-rtc base=localtime,clock=host,driftfix=slew
+
+monitor: $(BIN)/disk.img
+	-export DISPLAY=:0;\
+	qemu-system-i386 \
+	-monitor \
+	-display gtk \
+	-name "Operating System" \
+	-m 1G \
+	-drive if=ide,format=raw,file=$(BIN)/disk.img,index=0,media=disk \
 	-rtc base=localtime,clock=host,driftfix=slew
 
 dbgfile=bootloader
@@ -74,7 +84,7 @@ debug: $(BIN)/disk.img $(dbgfile).elf
 	-display gtk \
 	-name "Operating System" \
 	-m 1G \
-	-drive format=raw,file=$(BIN)/disk.img,index=0,media=disk \
+	-drive if=ide,format=raw,file=$(BIN)/disk.img,index=0,media=disk \
 	-rtc base=localtime,clock=host,driftfix=slew & \
 	gdb -ix gdbinit_real_mode.txt $(BUILD)/debug/$(dbgfile).elf \
         -ex 'target remote localhost:1234' \

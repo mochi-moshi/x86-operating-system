@@ -19,6 +19,5 @@ SECTIONS
     kernel_loader_end = .;
     /DISCARD/ : {
         *(.eh_frame);
-        *(.note*);
     }
 }

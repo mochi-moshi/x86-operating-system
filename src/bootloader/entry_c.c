@@ -82,34 +82,53 @@ void kernel_entry() {
         if(region->start_address <= kernel_loader_begin) {
             pmm_deinitialize_memory_region(&region->blocks_desc, (size_t)kernel_loader_begin, kernel_loader_end-kernel_loader_begin);
         }
-        print("Start Address:    ");
-        print_dword((uint32_t)region->start_address);
-        print("\nEnd Address:      ");
-        print_dword((uint32_t)region->end_address);
-        print("\nDescriptor:       ");
-        print_dword((uint32_t)region);
-        print("\nBlocks:           ");
-        print_dword((uint32_t)region->blocks);
-        print("\nBlocks End:       ");
-        print_dword((uint32_t)region->blocks + region->blocks_desc.number_of_bytes);
-        print("\nNumber of Blocks: ");
-        print_dword(region->blocks_desc.number_of_blocks);
-        print("\nNumber of Bytes:  ");
-        print_dword(region->blocks_desc.number_of_bytes);
-        print("\n\n");
+        //print("Start Address:    ");
+        //print_dword((uint32_t)region->start_address);
+        //print("\nEnd Address:      ");
+        //print_dword((uint32_t)region->end_address);
+        //print("\nDescriptor:       ");
+        //print_dword((uint32_t)region);
+        //print("\nBlocks:           ");
+        //print_dword((uint32_t)region->blocks);
+        //print("\nBlocks End:       ");
+        //print_dword((uint32_t)region->blocks + region->blocks_desc.number_of_bytes);
+        //print("\nNumber of Blocks: ");
+        //print_dword(region->blocks_desc.number_of_blocks);
+        //print("\nNumber of Bytes:  ");
+        //print_dword(region->blocks_desc.number_of_bytes);
+        //print("\n\n");
     }
     vmm_init(Regions, count);
     vmm_enter();
     print("Entered Virtual Memory Mode\n");
 
     partition_info_t *partition = kernel_pass->partition;
-    drive_init(partition->type, partition->lba_first, partition->size);
-    print("Initialized Drive\n");
+    uint32_t id = drive_init(partition->type, partition->lba_first, partition->size);
+    print("Drive: ");
+    print_dword(id);
+    uint16_t *ident = drive_identify();
+    if(!ident) {
+        print(" Failed");
+        panic();
+    } else {
+        print("\n Does");
+        if(!(ident[83] & (1 << 10)))
+            print("not ");
+        print("Support 48 bit LBA\n");
+        print(" UDMA: ");
+        print_word(ident[88]);
+        print("\n Conductor: ");
+        print_word(ident[93]);
+        print("\n 28 bit LBA sectors: ");
+        print_dword(*(uint32_t*)(ident+60));
+        print("\n 48 bit LBA sectors: ");
+        print_qword(*(uint64_t*)(ident+100));
+    }
+    ext2_init();
+    print("\nInitialized Ext2 Filesystem\n");
     // TODO: Load Kernel Modules into Upper Memory
 
-    for(;;) {
-        hlt();
-    }
+    panic();
 }
 
 __attribute__((interrupt))
