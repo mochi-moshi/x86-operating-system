@@ -13,13 +13,10 @@ __attribute__((section (".text.first")))
 void kernel_entry() {
     kernel_pass_t* kernel_pass;
     __asm__ __volatile__ ("mov %0, %%eax" : "=r"(kernel_pass));
-    
+
     clear_screen();
-//    print("Partition:\n    lba: ");
-//    print_dword(kernel_pass->partition->lba_first);
-//    print("\n    size: ");
-//    print_dword(kernel_pass->partition->size);
-    
+    print("Loading System...\n");
+
     smap_t* smap = kernel_pass->smap;
     ptr_t current_start = 0;
     size_t current_size = 0;
@@ -33,156 +30,67 @@ void kernel_entry() {
             Regions[current_region++] = pmm_create_region(current_start, current_start+current_size);
             current_size = 0;
         }
-//        print("\nBase Address: ");
-//        print_qword(entry.base_address);
-//        print("\nLength: ");
-//        print_qword(entry.length);
-//        print("\nType: ");
+        print("Type:         ");
         switch(entry.type) {
             case 1:
-//                print("Usable");
+                print("Usable");
                 break;
             case 2:
-//                print("Reserved");
+                print("Reserved");
                 break;
             case 3:
-//                print("ACPI reclaimable");
+                print("ACPI reclaimable");
                 break;
             case 4:
-//                print("ACPI NVS");
+                print("ACPI NVS");
                 break;
             case 5:
                 break;
             default:
-//                print_dword(entry.type);
+                print_dword(entry.type);
                 break;
         }
+        print("\nBase Address: ");
+        print_qword(entry.base_address);
+        print("\nLength:       ");
+        print_qword(entry.length);
+        putch('\n');
     }
 
-    // TODO: SETUP GDT and IDT
     memset(GDT, 0, sizeof(GDT));
     memset(IDT, 0, sizeof(IDT));
 
+    print("Loading GDT...");
     gdt_set_entry(&GDT[1], 0xFFFFF, 0, 0x9A, 0xC);
     gdt_set_entry(&GDT[2], 0xFFFFF, 0, 0x92, 0xC);
     gdt_load(GDT, 3);
+    print("Done\nLoading IDT...");
 
     idt_set_entry(&IDT[0], default_int, 0x8, IDT_32BIT_INT, IDT_PRESENT);
     for(uint8_t i = 1; i > 0; ++i)
         idt_set_entry(&IDT[i], default_int, 0x8, IDT_32BIT_INT, IDT_PRESENT);
+    print("Done\nLoading PIC...");
 
-    // TODO: SETUP PIC
     pic_init(IDT, 0x20, 0x28);
     idt_load(IDT);
     sti();
-    // TODO: SETUP Virtual Memory
+    print("Done\nLoading Memory Manager...");
+
     size_t count = 0;
     for(uint8_t count = 0; Regions[count]; count++) {
         memory_region_t *region = Regions[count];
-        if(region->start_address <= kernel_loader_begin) {
+        if(region->start_address <= kernel_loader_begin)
             pmm_deinitialize_memory_region(&region->blocks_desc, (size_t)kernel_loader_begin, kernel_loader_end-kernel_loader_begin);
-        }
-        //print("Start Address:    ");
-        //print_dword((uint32_t)region->start_address);
-        //print("\nEnd Address:      ");
-        //print_dword((uint32_t)region->end_address);
-        //print("\nDescriptor:       ");
-        //print_dword((uint32_t)region);
-        //print("\nBlocks:           ");
-        //print_dword((uint32_t)region->blocks);
-        //print("\nBlocks End:       ");
-        //print_dword((uint32_t)region->blocks + region->blocks_desc.number_of_bytes);
-        //print("\nNumber of Blocks: ");
-        //print_dword(region->blocks_desc.number_of_blocks);
-        //print("\nNumber of Bytes:  ");
-        //print_dword(region->blocks_desc.number_of_bytes);
-        //print("\n\n");
     }
     vmm_init(Regions, count);
     vmm_enter();
-    print("Entered Virtual Memory Mode\n");
+    print("Done\nEntered Virtual Memory Mode\n");
 
     partition_info_t *partition = kernel_pass->partition;
-    uint32_t id = drive_init(partition->type, partition->lba_first, partition->size);
-    print("Drive: ");
-    print_dword(id);
-    uint16_t *ident = drive_identify();
-    if(!ident) {
-        print(" Failed");
-        panic();
-    } else {
-        print("\n Does");
-        if(!(ident[83] & (1 << 10)))
-            print("not ");
-        print("Support 48 bit LBA\n");
-        print(" UDMA: ");
-        print_word(ident[88]);
-        print("\n Conductor: ");
-        print_word(ident[93]);
-        print("\n 28 bit LBA sectors: ");
-        print_dword(*(uint32_t*)(ident+60));
-        print("\n 48 bit LBA sectors: ");
-        print_qword(*(uint64_t*)(ident+100));
-    }
-    ext2_init();
-    print("\nInitialized Ext2 Filesystem\n");
-    // TODO: Load Kernel Modules into Upper Memory
-
+    drive_init(partition->status, partition->lba_first, partition->size);
     panic();
 }
 
 __attribute__((interrupt))
 void default_int(ptr_t stack) { }
 
-static char * const SCREEN = (char*)0xB8000;
-static const ptrdiff_t WIDTH = 80*2;
-static const ptrdiff_t HEIGHT = 25;
-static const ptrdiff_t SIZE = WIDTH*HEIGHT;
-static char * cursor = SCREEN;
-static const char hta[] = "0123456789ABCDEF";
-static char *holder = "0x0000000000000000";
-__attribute__((used))
-static void print(const char* str) {
-    for(;*str != 0 && cursor - SCREEN < SIZE; str++, cursor+=2) {
-        if(*str == 0xA || *str == 0xD) {
-            ptrdiff_t offset = cursor-SCREEN;
-            cursor += WIDTH - (offset % WIDTH) - 2;
-        } else { 
-            *cursor = *str;
-        }
-    }
-}
-__attribute__((used))
-static void clear_screen() {
-    for(cursor = SCREEN; cursor - SCREEN < SIZE; cursor += 2)
-        *cursor = ' ';
-    cursor = SCREEN;
-}
-__attribute__((used))
-static void print_byte(uint8_t value) {
-    holder[2] = hta[(value >> 4) & 0xF];
-    holder[3] = hta[(value >> 8) & 0xF];
-    holder[4] = 0;
-    print(holder);
-}
-__attribute__((used))
-static void print_word(uint16_t value) {
-    for(uint8_t i = 0; i < 4; i++)
-        *(holder+5-i) = hta[(value >> (4*i)) & 0xF];
-    holder[6] = 0;
-    print(holder);
-}
-__attribute__((used))
-static void print_dword(uint32_t value) {
-    for(uint8_t i = 0; i < 8; i++)
-        *(holder+9-i) = hta[(value >> (4*i)) & 0xF];
-    holder[10] = 0;
-    print(holder);
-}
-__attribute__((used))
-static void print_qword(uint64_t value) {
-    for(uint8_t i = 0; i < 16; i++)
-        *(holder+17-i) = hta[(value >> (4*i)) & 0xF];
-    holder[18] = 0;
-    print(holder);
-}

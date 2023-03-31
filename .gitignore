@@ -1,4 +1,6 @@
 bin/**
 build/*.o
-build/debug/*.elf
+build/*/*.s
+build/*/*.elf
 *.swp
+*.ignore

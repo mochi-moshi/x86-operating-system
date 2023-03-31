@@ -1,6 +1,6 @@
 CC=gcc
 CWARN += -Wall -Wno-unused-function -Wno-address-of-packed-member -Wno-int-to-pointer-cast
-CFLAGS += $(CWARN) -c -ggdb -std=gnu99 -m32 -march=i386 -masm=intel -ffreestanding -fno-builtin -fno-pie -nostdinc -Os -mgeneral-regs-only
+CFLAGS += $(CWARN) -c -ggdb -std=gnu99 -m32 -march=i386 -masm=intel -ffreestanding -fno-builtin -fno-pie -nostdinc -O0 -mgeneral-regs-only -mno-red-zone
 
 SRC=src
 BIN=bin
@@ -38,6 +38,9 @@ $(BUILD)/entry.o: $(SRC)/bootloader/entry.s
 
 $(BUILD)/entry_c.o: $(SRC)/bootloader/entry_c.c
 	$(CC) $(CFLAGS) -I$(SRC)/common_h $^ -o $@
+
+entry_c.s: $(SRC)/bootloader/entry_c.c
+	$(CC) $(CFLAGS) -S -I$(SRC)/common_h $^ -o $(BUILD)/$@
 
 bootsector.elf: $(BUILD)/bootsector.o
 	ld -T$(BUILD)/linkers/bootsector.ld $(LDFLAGS) -melf_i386 $< -o $(BUILD)/debug/$@

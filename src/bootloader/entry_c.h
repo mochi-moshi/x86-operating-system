@@ -9,6 +9,7 @@
 #include "virtual_memory_manager.h"
 #include "drive.h"
 #include "ext2.h"
+#include "print.h"
 
 typedef struct __attribute__((packed)) {
     uint64_t base_address;
@@ -43,17 +44,11 @@ typedef struct __attribute__((packed)) {
 } kernel_pass_t;
 
 void default_int(ptr_t stack) __attribute__((interrupt));
-
+__attribute__((noreturn))
 static void inline panic() {
     for(;;)
         hlt();
 }
 
-static void print(const char* str);
-static void print_byte(uint8_t value);
-static void print_word(uint16_t value);
-static void print_dword(uint32_t value);
-static void print_qword(uint64_t value);
-static void clear_screen();
 
 #endif
